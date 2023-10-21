@@ -2,4 +2,7 @@
     <string name="app_name">Spaceflight News</string>
     <string name="load_more">Load more…</string>
     <string name="search_news">Search News</string>
+    <string name="read_full">Read full article</string>
+    <string name="author">Abdullah Fikri Handi Saputra</string>
+    <string name="author_email">abdullahfikrihandi@gmail.com</string>
 </resources>

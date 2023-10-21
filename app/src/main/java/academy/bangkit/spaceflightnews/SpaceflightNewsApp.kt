@@ -1,76 +1,42 @@
 package academy.bangkit.spaceflightnews
 
-import academy.bangkit.spaceflightnews.data.repository.ArticleRepository
+import academy.bangkit.spaceflightnews.ui.navigation.Screen
+import academy.bangkit.spaceflightnews.ui.screen.detail.DetailScreen
+import academy.bangkit.spaceflightnews.ui.screen.home.HomeScreen
+import academy.bangkit.spaceflightnews.ui.screen.profile.ProfileScreen
 import academy.bangkit.spaceflightnews.ui.theme.SpaceflightNewsTheme
-import android.util.Log
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import kotlinx.coroutines.launch
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 
-
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpaceflightNewsApp(
-    viewModel: SpaceflightNewsViewModel = viewModel(factory = ViewModelFactory(ArticleRepository()))
+    navController: NavHostController = rememberNavController()
 ) {
-
-    val articles by viewModel.articles.observeAsState(emptyList())
-    val isLoading by viewModel.isLoading.observeAsState(initial = false)
-
-    LaunchedEffect(Unit) {
-        viewModel.getArticles()
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -78,7 +44,15 @@ fun SpaceflightNewsApp(
                     Text(text = stringResource(R.string.app_name))
                 },
                 actions = {
-                    IconButton(onClick = { /*TODO*/ }) {
+                    IconButton(onClick = {
+                        navController.navigate(Screen.Profile.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            restoreState = true
+                            launchSingleTop = true
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
                             contentDescription = "About Me"
@@ -87,97 +61,52 @@ fun SpaceflightNewsApp(
                 }
             )
         }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize()
-        ) {
-            val scope = rememberCoroutineScope()
-            val listState = rememberLazyListState()
-            val showButton: Boolean by remember {
-                derivedStateOf {
-                    listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == articles.lastIndex
-                }
-            }
+    )
+    { innerPadding ->
+        NavigationHost(navController, innerPadding)
+    }
+}
 
-            LinearProgressExample(isVisible = isLoading)
-
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.padding(top = 8.dp, end = 16.dp),
-                contentPadding = PaddingValues(bottom = 80.dp)
-            ) {
-                items(articles, key = { it.id }) { article ->
-                    ArticleListItem(
-                        title = article.title,
-                        photoUrl = article.imageUrl,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateItemPlacement(tween(durationMillis = 100))
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = showButton,
-                enter = fadeIn() + slideInVertically(),
-                exit = fadeOut() + slideOutVertically(),
-                modifier = Modifier
-                    .padding(bottom = 30.dp)
-                    .align(Alignment.BottomCenter)
-            ) {
-                LoadMoreArticles(
-                    onClick = {
-                        scope.launch {
-                            val url = viewModel.nextArticle
-                            if (url != null) {
-                                val limit = extractQueryParam(url, "limit")
-                                val offset = extractQueryParam(url, "offset")
-                                if (limit != null && offset != null) {
-                                    viewModel.loadMoreArticles(limit, offset)
-                                }
-                            }
-                        }
-                    }
-                )
-            }
+@Composable
+fun NavigationHost(navController: NavHostController, innerPadding: PaddingValues) {
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Home.route,
+        modifier = Modifier.padding(innerPadding)
+    ) {
+        composable(Screen.Home.route) {
+            HomeScreen(navController = navController)
+        }
+        composable(
+            Screen.Detail.route,
+            arguments = listOf(
+                navArgument("articleId") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val articleId = backStackEntry.arguments?.getInt("articleId") ?: 0
+            DetailScreen(articleId = articleId)
+        }
+        composable(Screen.Profile.route) {
+            ProfileScreen()
         }
     }
 }
 
 @Composable
-fun ArticleListItem(
-    title: String,
-    photoUrl: String,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.clickable {}
-    ) {
-        AsyncImage(
-            model = photoUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .padding(8.dp)
-                .size(100.dp)
-        )
+fun OpenUrl(title: String, url: String, modifier: Modifier) {
+    val uriHandler = LocalUriHandler.current
+    Button(content = {
         Text(
             text = title,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(start = 16.dp, end = 8.dp, top = 8.dp)
-                .align(Alignment.Top)
+            fontWeight = FontWeight.Bold,
         )
-    }
+    }, onClick = {
+        uriHandler.openUri(url)
+    }, modifier = modifier)
 }
 
 @Composable
-fun LinearProgressExample(isVisible: Boolean) {
+fun Loading(isVisible: Boolean) {
     if (isVisible) {
         LinearProgressIndicator(
             modifier = Modifier
@@ -186,44 +115,10 @@ fun LinearProgressExample(isVisible: Boolean) {
     }
 }
 
-@Composable
-fun LoadMoreArticles(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    FilledIconButton(
-        onClick = onClick,
-        modifier = modifier
-    ) {
-        Icon(
-            imageVector = Icons.Filled.ArrowDropDown,
-            contentDescription = stringResource(R.string.load_more),
-        )
-    }
-}
-
-fun extractQueryParam(url: String, param: String): Int? {
-    val regex = Regex("$param=(\\d+)")
-    val matchResult = regex.find(url)
-    return matchResult?.groupValues?.get(1)?.toIntOrNull()
-}
-
 @Preview(showBackground = true)
 @Composable
-fun JetHeroesAppPreview() {
+fun SpaceflightNewsAppPreview() {
     SpaceflightNewsTheme {
         SpaceflightNewsApp()
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun HeroListItemPreview() {
-    SpaceflightNewsTheme {
-        ArticleListItem(
-            title = "H.O.S. Cokroaminoto",
-            photoUrl = ""
-        )
-    }
-}
-
