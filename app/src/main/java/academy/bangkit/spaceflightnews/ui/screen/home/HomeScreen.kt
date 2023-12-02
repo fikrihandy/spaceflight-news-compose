@@ -55,7 +55,6 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
